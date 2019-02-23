@@ -230,7 +230,46 @@ class resnet(_FPN):
     if self.pretrained == True:
       print("Loading pretrained weights from %s" %(self.model_path))
       state_dict = torch.load(self.model_path)
-      resnet.load_state_dict({k:v for k,v in state_dict.items() if k in resnet.state_dict()})
+      #resnet.load_state_dict({k:v for k,v in state_dict.items() if k in resnet.state_dict()})
+      state_dict_1 = resnet.state_dict()
+      new_state_dict = {}
+      for k,v in state_dict['model'].items():
+          if k[:9] =='RCNN_base':
+              if k == 'RCNN_base.0.weight':
+                  k_new = 'conv1.weight'
+                  new_state_dict[k_new] = v
+              elif k == 'RCNN_base.1.weight':
+                  k_new = 'bn1.weight'
+                  new_state_dict[k_new] = v         
+              elif k == 'RCNN_base.1.bias':
+                  k_new = 'bn1.weight'
+                  new_state_dict[k_new] = v    
+              elif k == 'RCNN_base.1.running_mean':
+                  k_new = 'bn1.running_mean'
+                  new_state_dict[k_new] = v    
+              elif k == 'RCNN_base.1.running_var':
+                  k_new = 'bn1.running_var'
+                  new_state_dict[k_new] = v                                                              
+              elif k[10] =='1' and len(k.split('.'))-1 == 4:
+                  k_new = 'layer'+k[11:]
+                  new_state_dict[k_new] = v    
+              elif k[10] =='4':
+                  k_new = 'layer1'+k[11:] 
+                  new_state_dict[k_new] = v
+              elif k[10] =='5':
+                  k_new = 'layer2'+k[11:] 
+                  new_state_dict[k_new] = v       
+              elif k[10] =='6':
+                  k_new = 'layer3'+k[11:] 
+                  new_state_dict[k_new] = v 
+          elif k[:8] == 'RCNN_top':
+              k_new = 'layer4'+k[10:]
+              new_state_dict[k_new] = v                 
+          else:
+              new_state_dict[k] = v
+      pretrained_dict = {k: v for k, v in new_state_dict.items() if k in state_dict_1}
+      state_dict_1.update(pretrained_dict)
+      resnet.load_state_dict(state_dict_1)
 
     self.RCNN_layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
     self.RCNN_layer1 = nn.Sequential(resnet.layer1)
